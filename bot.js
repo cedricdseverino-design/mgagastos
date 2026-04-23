@@ -1,8 +1,8 @@
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 
-const TOKEN = '8107751612:AAGOJM1_Yjb1-MjQ68S-QIMOziBMWn9fjmk';
-const SHEET_URL = 'https://script.google.com/macros/s/AKfycbzbsIj6FuH5H7QGfBAGAIIQjEUyAaaDVfR8jPxK45pCjfgKKtWgCjGal1hUnl67x1UPRg/exec';
+const TOKEN = process.env.TOKEN;
+const SHEET_URL = process.env.SHEET_URL;
 
 const bot = new TelegramBot(TOKEN, { polling: true });
 
