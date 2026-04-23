@@ -11,7 +11,7 @@ const categoryMap = {
   coffee: 'Coffee',
   transport: 'Transportation',
   transpo: 'Transportation',
-  gas: 'Transportation',
+  gas: 'Gas',
   grocery: 'Groceries',
   groceries: 'Groceries',
   utilities: 'Utilities',
@@ -36,6 +36,7 @@ bot.on('message', async (msg) => {
   const text = msg.text?.trim();
   if (!text || text.startsWith('/')) return;
 
+  // Format: food 500 bpi
   const parts = text.split(' ');
   const categoryKey = parts[0].toLowerCase();
   const amount = parseFloat(parts[1]);
@@ -45,14 +46,14 @@ bot.on('message', async (msg) => {
 
   if (!category) {
     return bot.sendMessage(msg.chat.id,
-      `❌ Unknown category: *${parts[0]}*\n\nValid categories:\n${Object.keys(categoryMap).join(', ')}`,
+      `❌ Unknown category: *${parts[0]}*\n\nValid: ${Object.keys(categoryMap).join(', ')}`,
       { parse_mode: 'Markdown' }
     );
   }
 
   if (isNaN(amount)) {
     return bot.sendMessage(msg.chat.id,
-      '❌ Format: `food 500 bpi`\n_(category amount payment)_',
+      '❌ Format: `food 500 bpi`',
       { parse_mode: 'Markdown' }
     );
   }
@@ -60,13 +61,26 @@ bot.on('message', async (msg) => {
   const date = new Date().toLocaleDateString('en-PH');
 
   try {
+    // 1. Log the entry to the sheet
     await axios.post(SHEET_URL, {
       date, category, description: category,
       amount, type: 'Expense', notes
     });
 
+    // 2. Fetch monthly totals for this category
+    const res = await axios.get(`${SHEET_URL}?category=${encodeURIComponent(category)}`);
+    const totals = res.data;
+
+    // 3. Reply with confirmation + monthly summary
     bot.sendMessage(msg.chat.id,
-      `✅ *Logged!*\n📅 ${date}\n🏷 ${category}\n💰 ₱${amount.toLocaleString()}\n💳 ${notes || '—'}`,
+      `✅ *Logged!*\n` +
+      `📅 ${date}\n` +
+      `🏷 ${category}\n` +
+      `💰 ₱${amount.toLocaleString()}\n` +
+      `💳 ${notes || '—'}\n\n` +
+      `📊 *${totals.month} — ${category}*\n` +
+      `Total so far: *₱${totals.categoryTotal.toLocaleString()}*\n\n` +
+      `💼 *All expenses this month:* ₱${totals.overallTotal.toLocaleString()}`,
       { parse_mode: 'Markdown' }
     );
   } catch (err) {
@@ -74,11 +88,33 @@ bot.on('message', async (msg) => {
   }
 });
 
+bot.onText(/\/summary/, async (msg) => {
+  try {
+    const res = await axios.get(`${SHEET_URL}?category=all`);
+    const totals = res.data;
+    const cats = totals.allCategories;
+
+    let breakdown = '';
+    for (const [cat, amt] of Object.entries(cats).sort((a, b) => b[1] - a[1])) {
+      breakdown += `  • ${cat}: ₱${amt.toLocaleString()}\n`;
+    }
+
+    bot.sendMessage(msg.chat.id,
+      `📊 *${totals.month} Summary*\n\n` +
+      `${breakdown}\n` +
+      `💼 *Total: ₱${totals.overallTotal.toLocaleString()}*`,
+      { parse_mode: 'Markdown' }
+    );
+  } catch (err) {
+    bot.sendMessage(msg.chat.id, '❌ Could not fetch summary.');
+  }
+});
+
 bot.onText(/\/start|\/help/, (msg) => {
   bot.sendMessage(msg.chat.id,
-    `*Budget Tracker Bot* 💰\n\nFormat: \`category amount payment\`\n\nExamples:\n• \`food 500 bpi\`\n• \`transpo 50 cash\`\n• \`grocery 1200 gcash\`\n\nCategories:\n${Object.keys(categoryMap).join(', ')}`,
+    `*Budget Tracker Bot* 💰\n\nFormat: \`category amount payment\`\n\nExamples:\n• \`food 500 bpi\`\n• \`coffee 150 gcash\`\n• \`gas 2000 bpi\`\n\n/summary — see full monthly breakdown\n\nCategories: ${Object.keys(categoryMap).join(', ')}`,
     { parse_mode: 'Markdown' }
   );
 });
 
-console.log('Budget bot is running...');
+console.log('Budget bot running...');
