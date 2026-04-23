@@ -12,6 +12,7 @@ const categoryMap = {
   transport: 'Transportation',
   transpo: 'Transportation',
   gas: 'Gas',
+  gadgets: 'Gadgets',
   grocery: 'Groceries',
   groceries: 'Groceries',
   utilities: 'Utilities',
