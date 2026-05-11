@@ -82,26 +82,24 @@ function buildEntryMessage(entry, totals) {
   const amount = h(formatMoney(entry.amount));
   const type = h(entry.type || 'Expense');
 
-  let text = `<b>Logged!</b>\n`
-    + `<b>Date:</b> ${date}\n`
-    + `<b>Category:</b> ${category}\n`
-    + `<b>Description:</b> ${description}\n`
-    + `<b>Amount:</b> ${amount}\n`
-    + `<b>Type:</b> ${type}\n`
-    + `<b>Notes:</b> ${notes}`;
+  let text =
+    `<b>Logged!</b>\n` +
+    `<b>Date:</b> ${date}\n` +
+    `<b>Category:</b> ${category}\n` +
+    `<b>Description:</b> ${description}\n` +
+    `<b>Amount:</b> ${amount}\n` +
+    `<b>Type:</b> ${type}\n` +
+    `<b>Notes:</b> ${notes}`;
 
   if (totals) {
     const month = h(totals.month || 'This month');
     const categoryTotal = h(formatMoney(totals.categoryTotal || 0));
     const overallTotal = h(formatMoney(totals.overallTotal || 0));
-
     text += `\n\n<b>${month} - ${category}</b>\nSpent so far: <b>${categoryTotal}</b>`;
-
     if (totals.categoryBudget !== null && totals.categoryBudget !== undefined) {
       const budget = h(formatMoney(totals.categoryBudget));
       const remaining = totals.categoryRemaining;
       const remainingAmt = h(formatMoney(Math.abs(remaining || 0)));
-
       text += `\nBudget: <b>${budget}</b>`;
       if (remaining !== null && remaining !== undefined) {
         if (remaining >= 0) {
@@ -111,7 +109,6 @@ function buildEntryMessage(entry, totals) {
         }
       }
     }
-
     text += `\n\n<b>All expenses this month:</b> ${overallTotal}`;
   }
 
@@ -189,9 +186,13 @@ async function refreshEntryMessage(bot, chatId, messageId, entryId) {
   }
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function start() {
+  // Clear any existing webhook and drop pending updates
   try {
-    // Clear any existing webhook and drop pending updates via Telegram API
     await axios.post(`https://api.telegram.org/bot${TOKEN}/deleteWebhook`, {
       drop_pending_updates: true,
     });
@@ -199,6 +200,9 @@ async function start() {
   } catch (e) {
     console.error('Could not clear webhook:', e.message);
   }
+
+  // Wait a moment for old containers to stop polling
+  await sleep(5000);
 
   const bot = new TelegramBot(TOKEN, { polling: true });
 
@@ -261,13 +265,12 @@ async function start() {
     const chatId = query.message.chat.id;
     const messageId = query.message.message_id;
     const data = query.data;
-
     await bot.answerCallbackQuery(query.id);
 
     if (data.startsWith('edit:')) {
       const [, entryId, field] = data.split(':');
       editSessions.set(chatId, { entryId, field, messageId });
-      await bot.sendMessage(chatId, `Send the new value for <b>${field}</b>:`, {
+      await bot.sendMessage(chatId, `Send the new value for <b>${h(field)}</b>:`, {
         parse_mode: 'HTML',
         reply_markup: buildCancelKeyboard(entryId),
       });
