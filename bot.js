@@ -210,12 +210,17 @@ function attachHandlers(bot) {
       return;
     }
 
+    // Format: category amount description
+    // e.g. "food 150 bpi" or "transport 50"
     const parts = text.trim().split(/\s+/);
-    const amountRaw = parts[0];
+    const categoryRaw = parts[0];
+    const amountRaw = parts[1];
     const amount = parseAmount(amountRaw);
-    if (isNaN(amount)) return;
+    if (isNaN(amount)) {
+      await bot.sendMessage(chatId, `Invalid format. Use: <b>category amount description</b>\nExample: <i>food 150 bpi</i>`, { parse_mode: 'HTML' });
+      return;
+    }
 
-    const categoryRaw = parts[1] || '';
     const category = normalizeCategory(categoryRaw) || 'Miscellaneous';
     const description = parts.slice(2).join(' ') || category;
     const notes = '';
@@ -278,7 +283,6 @@ function attachHandlers(bot) {
 }
 
 async function startPolling() {
-  // Clear webhook first
   try {
     await axios.post(`https://api.telegram.org/bot${TOKEN}/deleteWebhook`, {
       drop_pending_updates: true,
@@ -288,7 +292,6 @@ async function startPolling() {
     console.error('Could not clear webhook:', e.message);
   }
 
-  // Wait for old container to stop
   console.log('Waiting 15s for old instances to stop...');
   await sleep(15000);
 
