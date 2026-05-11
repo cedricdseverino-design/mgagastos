@@ -190,22 +190,7 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function start() {
-  // Clear any existing webhook and drop pending updates
-  try {
-    await axios.post(`https://api.telegram.org/bot${TOKEN}/deleteWebhook`, {
-      drop_pending_updates: true,
-    });
-    console.log('Webhook cleared, starting polling...');
-  } catch (e) {
-    console.error('Could not clear webhook:', e.message);
-  }
-
-  // Wait a moment for old containers to stop polling
-  await sleep(5000);
-
-  const bot = new TelegramBot(TOKEN, { polling: true });
-
+function attachHandlers(bot) {
   bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text;
@@ -290,12 +275,44 @@ async function start() {
       await bot.deleteMessage(chatId, messageId);
     }
   });
+}
 
-  bot.on('polling_error', (err) => {
+async function startPolling() {
+  // Clear webhook first
+  try {
+    await axios.post(`https://api.telegram.org/bot${TOKEN}/deleteWebhook`, {
+      drop_pending_updates: true,
+    });
+    console.log('Webhook cleared.');
+  } catch (e) {
+    console.error('Could not clear webhook:', e.message);
+  }
+
+  // Wait for old container to stop
+  console.log('Waiting 15s for old instances to stop...');
+  await sleep(15000);
+
+  console.log('Starting polling...');
+  const bot = new TelegramBot(TOKEN, { polling: true });
+  attachHandlers(bot);
+
+  let restarting = false;
+  bot.on('polling_error', async (err) => {
     console.error('[polling_error]', JSON.stringify({ code: err.code, message: err.message }));
+    if (err.code === 'ETELEGRAM' && err.message.includes('409') && !restarting) {
+      restarting = true;
+      console.log('409 conflict detected, stopping and restarting polling in 15s...');
+      try { await bot.stopPolling(); } catch (e) { /* ignore */ }
+      await sleep(15000);
+      restarting = false;
+      console.log('Restarting polling...');
+      try { await bot.startPolling(); } catch (e) {
+        console.error('Failed to restart polling:', e.message);
+      }
+    }
   });
 
   console.log('Budget bot running...');
 }
 
-start();
+startPolling();
