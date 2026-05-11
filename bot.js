@@ -89,7 +89,7 @@ function parseAmount(value) {
 
 function formatMoney(amount) {
   const num = Number(amount || 0);
-  return `P${num.toLocaleString('en-PH', {
+  return `₱${num.toLocaleString('en-PH', {
     minimumFractionDigits: num % 1 ? 2 : 0,
     maximumFractionDigits: 2,
   })}`;
@@ -104,20 +104,21 @@ function buildEntryMessage(entry, totals) {
   const type = h(entry.type || 'Expense');
   const emoji = categoryEmoji[entry.category] || '💸';
 
-  let text =
-    `${emoji} <b>Logged!</b>\n` +
-    `📅 <b>Date:</b> ${date}\n` +
-    `🏷 <b>Category:</b> ${category}\n` +
-    `📝 <b>Description:</b> ${description}\n` +
-    `💸 <b>Amount:</b> ${amount}\n` +
-    `📊 <b>Type:</b> ${type}\n` +
-    `📋 <b>Notes:</b> ${notes}`;
+  let text = `${emoji} <b>Logged!</b>\n`
+    + `📅 <b>Date:</b> ${date}\n`
+    + `🏷 <b>Category:</b> ${category}\n`
+    + `📝 <b>Description:</b> ${description}\n`
+    + `💸 <b>Amount:</b> ${amount}\n`
+    + `📊 <b>Type:</b> ${type}\n`
+    + `📋 <b>Notes:</b> ${notes}`;
 
   if (totals) {
     const month = h(totals.month || 'This month');
     const categoryTotal = h(formatMoney(totals.categoryTotal || 0));
     const overallTotal = h(formatMoney(totals.overallTotal || 0));
-    text += `\n\n📊 <b>${month} - ${category}</b>\nSpent so far: <b>${categoryTotal}</b>`;
+
+    text += `\n\n📊 <b>${month} — ${category}</b>\nSpent so far: <b>${categoryTotal}</b>`;
+
     if (totals.categoryBudget !== null && totals.categoryBudget !== undefined) {
       const budget = h(formatMoney(totals.categoryBudget));
       const remaining = totals.categoryRemaining;
@@ -131,6 +132,7 @@ function buildEntryMessage(entry, totals) {
         }
       }
     }
+
     text += `\n\n💳 <b>All expenses this month:</b> ${overallTotal}`;
   }
 
@@ -165,6 +167,16 @@ async function fetchTotals(category) {
     return res.data;
   } catch (e) {
     console.error('fetchTotals error:', e.message);
+    return null;
+  }
+}
+
+async function fetchSummary() {
+  try {
+    const res = await axios.get(SHEET_URL, { params: { action: 'summary' } });
+    return res.data;
+  } catch (e) {
+    console.error('fetchSummary error:', e.message);
     return null;
   }
 }
@@ -212,11 +224,94 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function handleBudgetCommand(bot, chatId) {
+  try {
+    const summary = await fetchSummary();
+    if (!summary || summary.error) {
+      await bot.sendMessage(chatId, '❌ Could not fetch budget summary. Please try again later.');
+      return;
+    }
+
+    const month = h(summary.month || 'This month');
+    const overallTotal = formatMoney(summary.overallTotal || 0);
+    const overallBudget = summary.overallBudget ? formatMoney(summary.overallBudget) : null;
+    const overallRemaining = summary.overallRemaining;
+
+    let text = `📊 <b>Budget Summary — ${month}</b>\n`;
+    text += `━━━━━━━━━━━━━━━━━━\n`;
+    text += `💳 <b>Total Spent:</b> ${h(overallTotal)}\n`;
+
+    if (overallBudget !== null) {
+      text += `🎯 <b>Total Budget:</b> ${h(overallBudget)}\n`;
+      if (overallRemaining !== null && overallRemaining !== undefined) {
+        const remAmt = formatMoney(Math.abs(overallRemaining));
+        if (overallRemaining >= 0) {
+          text += `✅ <b>Remaining:</b> ${h(remAmt)}\n`;
+        } else {
+          text += `⚠️ <b>Over budget by:</b> ${h(remAmt)}\n`;
+        }
+      }
+    }
+
+    if (summary.categories && summary.categories.length > 0) {
+      text += `\n<b>By Category:</b>\n`;
+      text += `━━━━━━━━━━━━━━━━━━\n`;
+      for (const cat of summary.categories) {
+        const emoji = categoryEmoji[cat.category] || '💸';
+        const spent = formatMoney(cat.spent || 0);
+        const catName = h(cat.category);
+        text += `${emoji} <b>${catName}:</b> ${h(spent)}`;
+        if (cat.budget) {
+          const budgetAmt = formatMoney(cat.budget);
+          const remaining = cat.remaining;
+          text += ` / ${h(budgetAmt)}`;
+          if (remaining !== null && remaining !== undefined) {
+            const remAmt = formatMoney(Math.abs(remaining));
+            if (remaining >= 0) {
+              text += ` ✅ <i>(${h(remAmt)} left)</i>`;
+            } else {
+              text += ` ⚠️ <i>(over by ${h(remAmt)})</i>`;
+            }
+          }
+        }
+        text += `\n`;
+      }
+    }
+
+    await bot.sendMessage(chatId, text, { parse_mode: 'HTML' });
+  } catch (e) {
+    console.error('handleBudgetCommand error:', e.message);
+    await bot.sendMessage(chatId, `❌ Error fetching summary: ${e.message}`);
+  }
+}
+
 function attachHandlers(bot) {
   bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text;
-    if (!text || text.startsWith('/')) return;
+
+    if (!text) return;
+
+    // Handle commands
+    if (text === '/budget' || text === '/summary' || text === '/b') {
+      await handleBudgetCommand(bot, chatId);
+      return;
+    }
+
+    if (text === '/start' || text === '/help') {
+      await bot.sendMessage(chatId,
+        `👋 <b>Budget Bot</b>\n\n`
+        + `Log an expense:\n<code>category amount description</code>\n`
+        + `Example: <code>food 150 bpi</code>\n\n`
+        + `Commands:\n`
+        + `/budget — 📊 View monthly budget summary\n`
+        + `/help — ℹ️ Show this help message`,
+        { parse_mode: 'HTML' }
+      );
+      return;
+    }
+
+    if (text.startsWith('/')) return;
 
     const session = editSessions.get(chatId);
     if (session) {
@@ -238,8 +333,12 @@ function attachHandlers(bot) {
     const categoryRaw = parts[0];
     const amountRaw = parts[1];
     const amount = parseAmount(amountRaw);
+
     if (isNaN(amount)) {
-      await bot.sendMessage(chatId, `❌ Invalid format. Use: <b>category amount description</b>\nExample: <i>food 150 bpi</i>`, { parse_mode: 'HTML' });
+      await bot.sendMessage(chatId,
+        `❌ Invalid format. Use: <b>category amount description</b>\nExample: <code>food 150 bpi</code>`,
+        { parse_mode: 'HTML' }
+      );
       return;
     }
 
@@ -277,6 +376,7 @@ function attachHandlers(bot) {
     const chatId = query.message.chat.id;
     const messageId = query.message.message_id;
     const data = query.data;
+
     await bot.answerCallbackQuery(query.id);
 
     if (data.startsWith('edit:')) {
