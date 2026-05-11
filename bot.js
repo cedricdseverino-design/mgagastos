@@ -106,32 +106,32 @@ function buildEntryMessage(entry, totals) {
 
   let text =
     `${emoji} <b>Logged!</b>\n` +
-    `\uD83D\uDCC5 <b>Date:</b> ${date}\n` +
-    `\uD83C\uDFF7 <b>Category:</b> ${category}\n` +
-    `\uD83D\uDCDD <b>Description:</b> ${description}\n` +
-    `\uD83D\uDCB8 <b>Amount:</b> ${amount}\n` +
-    `\uD83D\uDCCA <b>Type:</b> ${type}\n` +
-    `\uD83D\uDCCB <b>Notes:</b> ${notes}`;
+    `📅 <b>Date:</b> ${date}\n` +
+    `🏷 <b>Category:</b> ${category}\n` +
+    `📝 <b>Description:</b> ${description}\n` +
+    `💸 <b>Amount:</b> ${amount}\n` +
+    `📊 <b>Type:</b> ${type}\n` +
+    `📋 <b>Notes:</b> ${notes}`;
 
   if (totals) {
     const month = h(totals.month || 'This month');
     const categoryTotal = h(formatMoney(totals.categoryTotal || 0));
     const overallTotal = h(formatMoney(totals.overallTotal || 0));
-    text += `\n\n\uD83D\uDCCA <b>${month} - ${category}</b>\nSpent so far: <b>${categoryTotal}</b>`;
+    text += `\n\n📊 <b>${month} - ${category}</b>\nSpent so far: <b>${categoryTotal}</b>`;
     if (totals.categoryBudget !== null && totals.categoryBudget !== undefined) {
       const budget = h(formatMoney(totals.categoryBudget));
       const remaining = totals.categoryRemaining;
       const remainingAmt = h(formatMoney(Math.abs(remaining || 0)));
-      text += `\n\uD83C\uDFAF Budget: <b>${budget}</b>`;
+      text += `\n🎯 Budget: <b>${budget}</b>`;
       if (remaining !== null && remaining !== undefined) {
         if (remaining >= 0) {
-          text += `\n\u2705 Remaining: <b>${remainingAmt}</b>`;
+          text += `\n✅ Remaining: <b>${remainingAmt}</b>`;
         } else {
-          text += `\n\u26A0\uFE0F Over budget by: <b>${remainingAmt}</b>`;
+          text += `\n⚠️ Over budget by: <b>${remainingAmt}</b>`;
         }
       }
     }
-    text += `\n\n\uD83D\uDCB3 <b>All expenses this month:</b> ${overallTotal}`;
+    text += `\n\n💳 <b>All expenses this month:</b> ${overallTotal}`;
   }
 
   return text;
@@ -141,11 +141,11 @@ function buildEditKeyboard(entryId) {
   return {
     inline_keyboard: [
       [
-        { text: '\u270F\uFE0F Edit Amount', callback_data: `edit:${entryId}:amount` },
-        { text: '\uD83D\uDCDD Edit Notes', callback_data: `edit:${entryId}:notes` },
+        { text: '✏️ Edit Amount', callback_data: `edit:${entryId}:amount` },
+        { text: '📝 Edit Notes', callback_data: `edit:${entryId}:notes` },
       ],
       [
-        { text: '\uD83D\uDDD1 Delete Entry', callback_data: `delete:${entryId}` },
+        { text: '🗑️ Delete Entry', callback_data: `delete:${entryId}` },
       ],
     ],
   };
@@ -154,7 +154,7 @@ function buildEditKeyboard(entryId) {
 function buildCancelKeyboard(entryId) {
   return {
     inline_keyboard: [
-      [{ text: '\u274C Cancel', callback_data: `cancel:${entryId}` }],
+      [{ text: '❌ Cancel', callback_data: `cancel:${entryId}` }],
     ],
   };
 }
@@ -224,10 +224,10 @@ function attachHandlers(bot) {
       const { entryId, field, messageId } = session;
       try {
         await updateEntry(entryId, field, text.trim());
-        await bot.sendMessage(chatId, '\u2705 Entry updated!');
+        await bot.sendMessage(chatId, '✅ Entry updated!');
         await refreshEntryMessage(bot, chatId, messageId, entryId);
       } catch (e) {
-        await bot.sendMessage(chatId, `\u274C Error updating entry: ${e.message}`);
+        await bot.sendMessage(chatId, `❌ Error updating entry: ${e.message}`);
       }
       return;
     }
@@ -239,7 +239,7 @@ function attachHandlers(bot) {
     const amountRaw = parts[1];
     const amount = parseAmount(amountRaw);
     if (isNaN(amount)) {
-      await bot.sendMessage(chatId, `\u274C Invalid format. Use: <b>category amount description</b>\nExample: <i>food 150 bpi</i>`, { parse_mode: 'HTML' });
+      await bot.sendMessage(chatId, `❌ Invalid format. Use: <b>category amount description</b>\nExample: <i>food 150 bpi</i>`, { parse_mode: 'HTML' });
       return;
     }
 
@@ -269,7 +269,7 @@ function attachHandlers(bot) {
       }
     } catch (e) {
       console.error('Error creating entry:', e.message);
-      await bot.sendMessage(chatId, `\u274C Error logging expense: ${e.message}`);
+      await bot.sendMessage(chatId, `❌ Error logging expense: ${e.message}`);
     }
   });
 
@@ -282,7 +282,7 @@ function attachHandlers(bot) {
     if (data.startsWith('edit:')) {
       const [, entryId, field] = data.split(':');
       editSessions.set(chatId, { entryId, field, messageId });
-      await bot.sendMessage(chatId, `\u270F\uFE0F Send the new value for <b>${h(field)}</b>:`, {
+      await bot.sendMessage(chatId, `✏️ Send the new value for <b>${h(field)}</b>:`, {
         parse_mode: 'HTML',
         reply_markup: buildCancelKeyboard(entryId),
       });
@@ -290,12 +290,12 @@ function attachHandlers(bot) {
       const [, entryId] = data.split(':');
       try {
         await deleteEntry(entryId);
-        await bot.editMessageText('\uD83D\uDDD1 Entry deleted.', {
+        await bot.editMessageText('🗑️ Entry deleted.', {
           chat_id: chatId,
           message_id: messageId,
         });
       } catch (e) {
-        await bot.sendMessage(chatId, `\u274C Error deleting: ${e.message}`);
+        await bot.sendMessage(chatId, `❌ Error deleting: ${e.message}`);
       }
     } else if (data.startsWith('cancel:')) {
       editSessions.delete(chatId);
