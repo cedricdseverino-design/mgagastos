@@ -292,6 +292,8 @@ bot.on('message', async (msg) => {
     try {
       await updateEntry({ entryId: session.entryId, amount, category, description });
       const totals = await fetchTotals(category, userId);
+              const summary = await fetchSummary(userId);
+        totals.overallTotal = summary.reduce((sum, item) => sum + (item.total || 0), 0);
       const updatedEntry = { date: getDatPH(), category, description, amount, notes: '' };
       const newText = buildEntryMessage(updatedEntry, totals, userName);
       await bot.editMessageText(newText, {
@@ -343,6 +345,8 @@ bot.on('message', async (msg) => {
     console.log('createEntry result:', JSON.stringify(result));
 
     const totals = await fetchTotals(category, userId);
+            const summary = await fetchSummary(userId);
+        totals.overallTotal = summary.reduce((sum, item) => sum + (item.total || 0), 0);
     console.log('fetchTotals result:', JSON.stringify(totals));
 
     const entry = { date, category, description, amount, notes: '' };
