@@ -62,7 +62,7 @@ async function fetchTotals(category, userId) {
       categoryTotal: d.total || 0,
       categoryBudget: d.budget || 0,
       categoryRemaining: d.remaining || 0,
-      overallTotal: d.total || 0,
+      overallTotal: d.overallTotal || 0,
     };
   } catch (e) {
     console.error('fetchTotals error:', e.message);
