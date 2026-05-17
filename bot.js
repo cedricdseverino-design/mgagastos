@@ -19,6 +19,19 @@ const categoryMap = {
   entertainment: 'Entertainment', invest: 'Investments', savings: 'Savings',
   ipon: 'Savings', education: 'Education', personal: 'Personal Care',
   subscriptions: 'Subscriptions', travel: 'Travel', misc: 'Miscellaneous',
+  // Merchants & specific keywords
+  fashion: 'Clothing', shirt: 'Clothing', pants: 'Clothing', shoes: 'Clothing', dress: 'Clothing', bag: 'Clothing',
+  jollibee: 'Food & Dining', mcdo: 'Food & Dining', kfc: 'Food & Dining', chowking: 'Food & Dining', mang: 'Food & Dining', lutong: 'Food & Dining', meal: 'Food & Dining',
+  starbucks: 'Coffee', cbtl: 'Coffee', milktea: 'Coffee', gongcha: 'Coffee', chatime: 'Coffee',
+  savemore: 'Groceries', puregold: 'Groceries', shopwise: 'Groceries', landers: 'Groceries',
+  shell: 'Gas', petron: 'Gas', caltex: 'Gas', seaoil: 'Gas', gasoline: 'Gas', diesel: 'Gas', fuel: 'Gas',
+  meralco: 'Utilities', maynilad: 'Utilities', pldt: 'Utilities', converge: 'Utilities', kuryente: 'Utilities',
+  netflix: 'Subscriptions', spotify: 'Subscriptions', youtube: 'Subscriptions',
+  grab: 'Transportation', angkas: 'Transportation', jeepney: 'Transportation', parking: 'Transportation', toll: 'Transportation', mrt: 'Transportation', lrt: 'Transportation',
+  gym: 'Fitness', fitness: 'Fitness', workout: 'Fitness', yoga: 'Fitness',
+  xandra: 'Personal Care', haircut: 'Personal Care', salon: 'Personal Care', barbershop: 'Personal Care', grooming: 'Personal Care', spa: 'Personal Care',
+  hotel: 'Travel', flight: 'Travel', airfare: 'Travel', airbnb: 'Travel', palawan: 'Travel', boracay: 'Travel',
+  stock: 'Investments', crypto: 'Investments', bitcoin: 'Investments', uitf: 'Investments',
 };
 
 const categoryEmoji = {
@@ -48,6 +61,14 @@ function formatMoney(amount) {
 function normalizeCategory(raw) {
   if (!raw) return null;
   return categoryMap[raw.toLowerCase().trim()] || raw.trim();
+}
+function detectPaymentMethod(text) {
+  if (!text) return '';
+  const t = text.toLowerCase().trim();
+  const methods = ['bpi', 'bdo', 'metrobank', 'unionbank', 'rcbc', 'eastwest', 'landbank', 'pnb', 'maya', 'gcash', 'paypal', 'cash', 'shopeepay', 'coins', 'credit card', 'debit card'];
+  const found = methods.find(m => t.includes(m));
+  return found || '';
+}
 }
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
@@ -333,13 +354,16 @@ bot.on('message', async (msg) => {
   }
 
   const category = normalizeCategory(categoryRaw) || 'Miscellaneous';
-  const description = parts.slice(2).join(' ') || category;
+    const extraText = parts.slice(2).join(' ');
+  const paymentMethod = detectPaymentMethod(extraText);
+  const description = categoryRaw !== category ? categoryRaw : (extraText && !paymentMethod ? extraText : category);
+  const notes = paymentMethod || '';
   const date = getDatPH();
   const type = 'Expense';
 
   try {
     const result = await createEntry({
-      amount, category, description, notes: '', date, type, chatId, userId, userName
+            amount, category, description, notes, date, type, chatId, userId, userName
     });
 
     console.log('createEntry result:', JSON.stringify(result));
@@ -349,7 +373,7 @@ bot.on('message', async (msg) => {
         totals.overallTotal = summary.reduce((sum, item) => sum + (item.total || 0), 0);
     console.log('fetchTotals result:', JSON.stringify(totals));
 
-    const entry = { date, category, description, amount, notes: '' };
+            const entry = { date, category, description, amount, notes };
     const msgText = buildEntryMessage(entry, totals, userName);
 
     await bot.sendMessage(chatId, msgText, {
