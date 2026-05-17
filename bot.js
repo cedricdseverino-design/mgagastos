@@ -69,7 +69,6 @@ function detectPaymentMethod(text) {
   const found = methods.find(m => t.includes(m));
   return found || '';
 }
-}
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
 async function fetchTotals(category, userId) {
