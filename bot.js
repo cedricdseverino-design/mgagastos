@@ -1,4 +1,5 @@
-const TelegramBot = require('node-telegram-bot-api');
+const TelegramBotPkg = require('node-telegram-bot-api');
+const TelegramBot = TelegramBotPkg.default || TelegramBotPkg;
 const axios = require('axios');
 
 const TOKEN = process.env.TOKEN;
