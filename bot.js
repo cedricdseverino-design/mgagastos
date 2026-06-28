@@ -23,6 +23,7 @@ const categoryMap = {
   fashion: 'Clothing', shirt: 'Clothing', pants: 'Clothing', shoes: 'Clothing', dress: 'Clothing', bag: 'Clothing', 
   // Shopping keywords
   shopping: 'Shopping', accessory: 'Shopping', accessories: 'Shopping', lazada: 'Shopping', shopee: 'Shopping', zalora: 'Shopping', shein: 'Shopping', temu: 'Shopping', mall: 'Shopping', department: 'Shopping',
+    furniture: 'Shopping', appliance: 'Shopping', appliances: 'Shopping', decor: 'Shopping', ikea: 'Shopping', abenson: 'Shopping',
   jollibee: 'Food & Dining', mcdo: 'Food & Dining', kfc: 'Food & Dining', chowking: 'Food & Dining', mang: 'Food & Dining', lutong: 'Food & Dining', meal: 'Food & Dining',
   starbucks: 'Coffee', cbtl: 'Coffee', milktea: 'Coffee', gongcha: 'Coffee', chatime: 'Coffee',
   savemore: 'Groceries', puregold: 'Groceries', shopwise: 'Groceries', landers: 'Groceries',
